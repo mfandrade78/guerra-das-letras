@@ -22,7 +22,7 @@ cinza = (100, 100, 100)
 
 # fontes
 fonte_gigante = pygame.font.SysFont("Arial", 45, bold=True)
-fonte_gigante = pygame.font.SysFont("Arial", 32, bold=True)
+fonte_media = pygame.font.SysFont("Arial", 32, bold=True) # Corrected: defined fonte_media
 
 # efeitos sonoros
 def gerar_som(tipo):
@@ -30,7 +30,7 @@ def gerar_som(tipo):
     frequencia = 880 if tipo == "acerto" else 220
     duracao = 0.1 if tipo == "acerto" else 0.3
     amostragem = 44100
-    num_amostras = init(duracao * amostragem)
+    num_amostras = int(duracao * amostragem) # Corrected: init changed to int
 
     buffer = bytearray()
     for i in range(num_amostras):
@@ -61,7 +61,7 @@ class Nave:
         self.velocidade = 7
 
     def mover(self, teclas):
-        if teclas[pygame.K_left] and self x > 0:
+        if teclas[pygame.K_left] and self.x > 0: # Corrected: added . to self.x
             self.x -= self.velocidade
         if teclas[pygame.K_right] and self.x < largura - self.largura:
             self.x += self.velocidade
@@ -92,13 +92,13 @@ class Projetil:
 class LetraFlutuante:
     def __init__(self):
         # sorteia uma letra qualquer do alfabeto
-        if random.random() < 0.4 and letras_restates:
+        if random.random() < 0.4 and letras_restantes: # Corrected: letras_restates changed to letras_restantes
             self.caractere = letras_restantes[0]
         else:
-            self.caractere = chr(random.randit(65, 90)) # A-Z
+            self.caractere = chr(random.randint(65, 90)) # A-Z # Corrected: randit changed to randint
 
-        self.x = random.randit(50, largura - 50)
-        self.y = random.randit(-100, -40)
+        self.x = random.randint(50, largura - 50) # Corrected: randit changed to randint
+        self.y = random.randint(-100, -40) # Corrected: randit changed to randint
         self.velocidade = random.uniform(1.5, 3.5)
         self.tamanho = 40
 
@@ -150,10 +150,10 @@ while jogando:
     teclas = pygame.key.get_pressed()
 
     # eventos
-    for evento in pygame.get_event_loop():
-        if evento.type == pygame.quit:
+    for evento in pygame.event.get(): # Corrected: pygame.get_event_loop() changed to pygame.event.get()
+        if evento.type == pygame.QUIT: # Corrected: pygame.quit changed to pygame.QUIT
             jogando = False
-        if evento.type == pygame.keydown:
+        if evento.type == pygame.KEYDOWN:
             if evento.key == pygame.K_space and len(letras_restantes) > 0:
                 # dispara o projétil a partir do bico da nave
                 projeteis.append(Projetil(nave.x + nave.largura // 2, nave.y))
@@ -215,7 +215,7 @@ while jogando:
             indice_letras_acertadas += 1
         else:
             string_progresso += "_ "
-    
+
     texto_frase = fonte_gigante.render(string_progresso, True, amarelo)
     rect_frase = texto_frase.get_rect(center=(largura // 2, 50))
     tela.blit(texto_frase, rect_frase)

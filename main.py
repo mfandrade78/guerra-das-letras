@@ -1,3 +1,10 @@
+import warnings
+import sys
+import os
+
+# Suprime avisos de deprecação do setuptools/pkg_resources
+warnings.filterwarnings("ignore")
+
 import pygame
 import random
 import math
@@ -9,6 +16,7 @@ pygame.mixer.init()
 # layout da tela
 largura, altura = 800, 600
 tela = pygame.display.set_mode((largura, altura))
+pygame.display.set_caption("Guerra das Letras")
 relogio = pygame.time.Clock()
 
 # cores
@@ -61,9 +69,9 @@ class Nave:
         self.velocidade = 7
 
     def mover(self, teclas):
-        if teclas[pygame.K_left] and self.x > 0: # Corrected: added . to self.x
+        if teclas[pygame.K_LEFT] and self.x > 0: # Corrected: added . to self.x
             self.x -= self.velocidade
-        if teclas[pygame.K_right] and self.x < largura - self.largura:
+        if teclas[pygame.K_RIGHT] and self.x < largura - self.largura:
             self.x += self.velocidade
 
     def desenhar(self):
@@ -164,7 +172,7 @@ while jogando:
 
         # criar novas letras na tela periodicamente
         tempo_spawn += 1
-        if tempo_spawn > 45:
+        if tempo_spawn > 20:
             letras.append(LetraFlutuante())
             tempo_spawn = 0
 

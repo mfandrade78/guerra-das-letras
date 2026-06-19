@@ -11,18 +11,6 @@ largura, altura = 800, 600
 tela = pygame.display.set_mode((largura, altura))
 relogio = pygame.time.Clock()
 
-# cores
-preto = (10, 10, 20)
-branco = (255, 255, 255)
-amarelo = (255, 234, 0)
-azul = (50, 150, 255)
-verde = (0, 255, 100)
-vermelho = (255, 50, 50)
-cinza = (100, 100, 100)
-
-# fontes
-fonte_gigante = pygame.font.SysFont("Arial", 45, bold=True)
-fonte_media = pygame.font.SysFont("Arial", 32, bold=True) # Corrected: defined fonte_media
 
 # efeitos sonoros
 def gerar_som(tipo):

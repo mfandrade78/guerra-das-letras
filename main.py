@@ -1,155 +1,50 @@
-import warnings
-import sys
-import os
-
-# Suprime avisos de deprecação do setuptools/pkg_resources
-warnings.filterwarnings("ignore")
-
 import pygame
-import random
 import math
+from configuracoes import (
+    largura, altura, preto, branco, amarelo, verde, fonte_gigante, fonte_media, fonte_pequena, som_acerto, som_erro, fases, intervalos_spawn, multiplicadores_velocidade, chances_letra_certa, ESTADO_PAUSADO, ESTADO_JOGANDO, ESTADO_VITORIA
+)
+from entidades import Nave, Projetil, LetraFlutuante
 
-# chamando o pygame e os efeitos sonoros
-pygame.init()
-pygame.mixer.init()
-
-# layout da tela
-largura, altura = 800, 600
+# janela e relógio
 tela = pygame.display.set_mode((largura, altura))
-pygame.display.set_caption("Guerra das Letras")
+pygame.display.set_caption("Guerra nas Letras")
 relogio = pygame.time.Clock()
 
-# cores
-preto = (10, 10, 20)
-branco = (255, 255, 255)
-amarelo = (255, 234, 0)
-azul = (50, 150, 255)
-verde = (0, 255, 100)
-vermelho = (255, 50, 50)
-cinza = (100, 100, 100)
-
-# fontes
-fonte_gigante = pygame.font.SysFont("Arial", 45, bold=True)
-fonte_media = pygame.font.SysFont("Arial", 32, bold=True) # Corrected: defined fonte_media
-
-# efeitos sonoros
-def gerar_som(tipo):
-    """Gera um som de acerto (agudo) ou erro (grave)"""
-    frequencia = 880 if tipo == "acerto" else 220
-    duracao = 0.1 if tipo == "acerto" else 0.3
-    amostragem = 44100
-    num_amostras = int(duracao * amostragem) # Corrected: init changed to int
-
-    buffer = bytearray()
-    for i in range(num_amostras):
-        t = i / amostragem
-        # onda quadrada básica
-        valor = 127 if math.sin(2 * math.pi * frequencia * t) > 0 else -128
-        buffer.append(valor & 0xFF)
-
-    som = pygame.mixer.Sound(buffer=bytes(buffer))
-    som.set_volume(0.2)
-    return som
-
-som_acerto = gerar_som("acerto")
-som_erro = gerar_som("erro")
-
-# lógica da frase
-frase_alvo = "A BOLA E AZUL"
-letras_restantes = [c for c in frase_alvo if c != " "]
+# variáveis globais de progresso (iniciar_fase)
+fase_atual = 0
+frase_alvo = ""
+letras_restantes = []
 letras_acertadas = []
-
-# classes do jogo
-class Nave:
-    def __init__(self):
-        self.largura = 50
-        self.altura = 40
-        self.x = largura // 2 - self.largura // 2
-        self.y = altura - 70
-        self.velocidade = 7
-
-    def mover(self, teclas):
-        if teclas[pygame.K_LEFT] and self.x > 0: # Corrected: added . to self.x
-            self.x -= self.velocidade
-        if teclas[pygame.K_RIGHT] and self.x < largura - self.largura:
-            self.x += self.velocidade
-
-    def desenhar(self):
-        # desenha a nave como um foguete
-        pontos = [
-            (self.x + self.largura // 2, self.y),
-            (self.x, self.y + self.altura),
-            (self.x + self.largura, self.y + self.altura)
-        ]
-        pygame.draw.polygon(tela, azul, pontos)
-        pygame.draw.polygon(tela, branco, pontos, 2)
-
-class Projetil:
-    def __init__(self, x, y):
-        self.x = x
-        self.y = y
-        self.raio = 5
-        self.velocidade = 8
-
-    def mover(self):
-        self.y -= self.velocidade
-        
-    def desenhar(self):
-        pygame.draw.circle(tela, amarelo, (self.x, self.y), self.raio)
-
-class LetraFlutuante:
-    def __init__(self):
-        # sorteia uma letra qualquer do alfabeto
-        if random.random() < 0.4 and letras_restantes: # Corrected: letras_restates changed to letras_restantes
-            self.caractere = letras_restantes[0]
-        else:
-            self.caractere = chr(random.randint(65, 90)) # A-Z # Corrected: randit changed to randint
-
-        self.x = random.randint(50, largura - 50) # Corrected: randit changed to randint
-        self.y = random.randint(-100, -40) # Corrected: randit changed to randint
-        self.velocidade = random.uniform(1.5, 3.5)
-        self.tamanho = 40
-
-        # estados de feedback: "normal", "correto", "incorreto"
-        self.estado = "normal"
-        self.cronometro_estado = 0
-
-    def mover(self):
-        if self.estado == "normal":
-            self.y += self.velocidade
-        else:
-            self.cronometro_estado -= 1 # trava a letra por alguns frames
-
-    def desenhar(self):
-        texto = fonte_media.render(self.caractere, True, branco)
-
-        # define a cor do relevo com base no estado
-        if self.estado == "correto":
-            cor_relevo = verde
-            espesura_relevo = 5
-        elif self.estado == "incorreto":
-            cor_relevo = vermelho
-            espesura_relevo = 5
-        else:
-            cor_relevo = cinza
-            espesura_relevo = 2
-
-        # efeito de relevo (borda/sombra expandida)
-        for dx in [-espesura_relevo, espesura_relevo]:
-            for dy in [-espesura_relevo, espesura_relevo]:
-                tela.blit(fonte_media.render(self.caractere, True, cor_relevo), (self.x + dx, self.y + dy))
-
-        # texti orubcuoak oir cuna
-        tela.blit(texto, (self.x, self.y))
-
-    def obter_retangulo(self):
-        return pygame.Rect(self.x, self.y, self.tamanho, self.tamanho)
-
-# inicialização dos objetos
-nave = Nave()
+intervalo_spawn = 45
+multiplicador_velocidade = 1.0
+chance_letra_certa = 0.4
+fase_recem_concluida = None # guarda o índice da fase que acabou de ser concluída, para exibir
+# a mensagem de "FASE X CONCLUÍDA!" durante a pausa
 projeteis = []
 letras = []
 tempo_spawn = 0
+estado_jogo = ESTADO_PAUSADO # o jogo começa pausado, esperando ENTER
+
+def iniciar_fase(indice):
+    """Configura todas as variáveis globais para a fase indicada"""
+    global fase_atual, frase_alvo, letras_restantes, letras_acertadas
+    global intervalo_spawn, multiplicador_velocidade, chance_letra_certa
+    global tempo_spawn, letras, projeteis
+    
+    fase_atual = indice
+    frase_alvo = fases[indice]
+    letras_restantes = [c for c in frase_alvo if c != " "]
+    letras_acertadas = []
+    intervalo_spawn = intervalos_spawn[indice]
+    multiplicador_velocidade = multiplicadores_velocidade[indice]
+    chance_letra_certa = chances_letra_certa[indice]
+    tempo_spawn = 0
+    letras = []
+    projeteis = []
+
+# inicializa a primeira fase
+nave = Nave()
+iniciar_fase(0)
 
 # loop principal do jogo
 jogando = True
@@ -158,22 +53,25 @@ while jogando:
     teclas = pygame.key.get_pressed()
 
     # eventos
-    for evento in pygame.event.get(): # Corrected: pygame.get_event_loop() changed to pygame.event.get()
-        if evento.type == pygame.QUIT: # Corrected: pygame.quit changed to pygame.QUIT
+    for evento in pygame.event.get(): 
+        if evento.type == pygame.QUIT: 
             jogando = False
         if evento.type == pygame.KEYDOWN:
-            if evento.key == pygame.K_space and len(letras_restantes) > 0:
+            if evento.key == pygame.K_SPACE and estado_jogo  == ESTADO_JOGANDO and len(letras_restantes) > 0:
                 # dispara o projétil a partir do bico da nave
                 projeteis.append(Projetil(nave.x + nave.largura // 2, nave.y))
+            if evento.key == pygame.K_RETURN and estado_jogo == ESTADO_PAUSADO: 
+                # libera o início da fase que está aguardando
+                estado_jogo = ESTADO_JOGANDO
 
     # atualização de lógica (caso o jogo não tenha acabado)
-    if letras_restantes:
+    if estado_jogo == ESTADO_JOGANDO:
         nave.mover(teclas)
 
         # criar novas letras na tela periodicamente
         tempo_spawn += 1
-        if tempo_spawn > 20:
-            letras.append(LetraFlutuante())
+        if tempo_spawn > intervalo_spawn:
+            letras.append(LetraFlutuante(letras_restantes, chance_letra_certa, multiplicador_velocidade))
             tempo_spawn = 0
 
         # movimentação dos projéteis
@@ -209,7 +107,22 @@ while jogando:
                         l.cronometro_estado = 20
                         som_erro.play()
 
+        # a palavra da fase foi concluída?
+        if not letras_restantes:
+            fase_recem_concluida = fase_atual # guarda qual fase acabou de ser vencida
+            letras = []
+            projeteis = []
+            if fase_atual + 1 < len(fases):
+                iniciar_fase(fase_atual + 1) # prepara a próxima fase
+                estado_jogo = ESTADO_PAUSADO
+            else: 
+                estado_jogo = ESTADO_VITORIA
+
     # renderização / desenhos
+    # 0- indicador de fase (canto superior esquerdo)
+    texto_fase  = fonte_pequena.render(f"FASE {fase_atual + 1} / {len(fases)}", True, branco)
+    tela.blit(texto_fase, (20, 20))
+
     # 1- desenha frase alvo (central superior)
     # monta a string visual mostrando o progresso do aluno (ex: "A B_ _ _")
     string_progresso = ""
@@ -229,14 +142,34 @@ while jogando:
     tela.blit(texto_frase, rect_frase)
 
     # 2- desenha elementos do jogo
-    for l in letras: l.desenhar()
-    for p in projeteis: p.desenhar()
-    nave.desenhar()
+    for l in letras: l.desenhar(tela)
+    for p in projeteis: p.desenhar(tela)
+    nave.desenhar(tela)
 
-    # 3- tela de vitória
-    if not letras_restantes:
-        texto_vitoria = fonte_gigante.render("PARABÉNS! VOCÊ CONSEGUIU!", True, verde)
-        rect_vitoria = texto_vitoria.get_rect(center=(largura //2, altura // 2))
+    # 3- mensagens de pausa / vitória final
+    if estado_jogo == ESTADO_PAUSADO:
+        y_base = altura // 2 - 60
+
+        # se uma fase anterior acabou de ser concluída, mostra a mensagem de parabéns
+        if fase_recem_concluida is not None: 
+            texto_concluida = fonte_gigante.render(f"FASE {fase_recem_concluida + 1} CONCLUÍDA!", True, verde)
+            rect_concluida = texto_concluida.get_rect(center=(largura // 2, y_base))
+            tela.blit(texto_concluida, rect_concluida)
+            y_base += 60
+
+        texto_prox = fonte_media.render(f"Fase {fase_atual + 1}: {frase_alvo}", True, branco)
+        rect_prox = texto_prox.get_rect(center=(largura // 2, y_base))
+        tela.blit(texto_prox, rect_prox)
+
+        # texto "pressione ENTER" com um leve efeito de pulsar
+        intensidade = int(150 + 105 * abs(math.sin(pygame.time.get_ticks() / 300)))
+        texto_instrucao = fonte_media.render("Pressione ENTER para começar", True, (intensidade, intensidade, 0))
+        rect_instrucao = texto_instrucao.get_rect(center=(largura // 2, y_base + 60))
+        tela.blit(texto_instrucao, rect_instrucao)
+
+    elif estado_jogo == ESTADO_VITORIA:
+        texto_vitoria = fonte_gigante.render("PARABÉNS! VOCÊ VENCEU!", True, verde)
+        rect_vitoria = texto_vitoria.get_rect(center=(largura // 2, altura // 2))
         tela.blit(texto_vitoria, rect_vitoria)
 
     # atualiza a tela

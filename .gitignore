@@ -13,7 +13,8 @@ node_modules/
 Thumbs.db
 
 # ignorar cache
-_pycache_
+__pycache__/
 
 # ignorar build\main
-build\main
+build/
+*.py[cod]

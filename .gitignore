@@ -1,0 +1,19 @@
+# ignorar configurações locais do vs code
+.vscode/
+
+# ignorar dependências (muito pesadas para o github)
+node_modules/
+
+# ignorar arquivos de variáveis de ambiente (segurança!)
+.env
+.env.local
+
+# ignorar arquivos do sistema operacional
+.DS_Store
+Thumbs.db
+
+# ignorar cache
+_pycache_
+
+# ignorar build\main
+build\main
